@@ -17,3 +17,12 @@ This repository contains analysis of the National Health and Nutrition Examinati
 - Data cleaning and variable recoding in R.
 - Main exposure: **Average daily fiber intake** (grams/day).
 - Outcome: **Depression**, measured with PHQ-9 (both binary and ordinal categories).
+  
+## Tables
+- **Table 1:** Descriptive characteristics
+- **Table 2:** Crude and adjusted odds ratios
+- **Table 3:** Interaction terms
+- **Table 4:** Gender-specific subgroup analyses
+
+## Contact
+For questions or collaborations, please contact **nebyu.amaha@gmail.com**.
