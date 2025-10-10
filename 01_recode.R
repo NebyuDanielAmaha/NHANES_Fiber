@@ -70,21 +70,6 @@ n_income <- n_income %>%
     )
   )
 
-# Alcohol use
-n_alq <- read_xpt("ALQ_L.xpt",col_select = c("SEQN", "ALQ121"))
-
-n_alq <- n_alq %>%
-  mutate(
-    alc_current = case_when(
-      ALQ121 %in% c(0,9,10) ~ 0,               # Never or 1-6 times in past 12 months)
-      ALQ121 %in% 1:8 ~ 1,                   # Current drinker
-      ALQ121 %in% c(77, 99) ~ NA_real_,       # Refused/Don't know
-      TRUE ~ NA_real_                         # Missing
-    )
-  )
-
-
-
 #EXPOSURE VARIABLES
 n_fiber_day1 <- read_xpt("DR1TOT_L.xpt", col_select = c("SEQN", "DR1TFIBE","WTDRD1"))
 n_fiber_day2 <- read_xpt("DR2TOT_L.xpt", col_select = c("SEQN", "DR2TFIBE","WTDR2D"))
@@ -125,7 +110,7 @@ n_bmi <- n_bmi %>%
     )
   )
 
-#binary
+#binary overweight or not
 n_bmi <- n_bmi %>%
   mutate(
     bmi_overweight = case_when(
@@ -246,9 +231,9 @@ n_phq <- n_phq %>%
   )
 
 
-#MERGE ALL THE DATA
+#MERGE ALL THE DATA 
 
-# Start with n_demo and left join all others.
+# Start with n_demo
 nhanes_data <- n_demo %>%
   left_join(n_phq, by = "SEQN") %>%
   left_join(n_fiber, by = "SEQN") %>%
