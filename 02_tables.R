@@ -27,6 +27,8 @@ predictors <- c("fiber_grams", "gender", "age_category",
 
 crude_list <- list()
 
+#USING FOR LOOP TO GO THROUGH THE PREDICTORS
+
 for (var in predictors) {
   
   formula <- as.formula(paste("depression_cat ~", var))
@@ -38,7 +40,7 @@ for (var in predictors) {
   z <- coef_pred / se
   pval <- 2 * (1 - pnorm(abs(z)))
   
-  keep <- !grepl("\\|", names(coef_pred))
+  keep <- !grepl("\\|", names(coef_pred)) #to keep only the coefficients
   
   df <- data.frame(
     Variable = names(coef_pred)[keep],
@@ -48,7 +50,7 @@ for (var in predictors) {
     p_value = pval[keep]
   )
   
-  crude_list[[var]] <- df
+  crude_list[[var]] <- df #keeping it in the crude_list
 }
 
 crude_results <- bind_rows(crude_list) %>%
@@ -57,6 +59,7 @@ crude_results <- bind_rows(crude_list) %>%
 # -----------------------------
 # Table 2: Adjusted Odds Ratios
 # -----------------------------
+#MAKING SURE DEPRESSION CAT IS ORDERED AND A FACTOR
 nhanes_sub <- nhanes_sub %>%
   mutate(
     depression_cat = factor(
@@ -79,7 +82,7 @@ fit_svy_ordinal <- svyolr(
     sleep_disorder + vigorous_excercise + bmi_overweight + income_category,
   design = nhanes_design
 )
-
+#Calculating p-value because svyolr doesn't give p-values
 coef <- coef(fit_svy_ordinal)
 se <- summary(fit_svy_ordinal)$coefficients[, "Std. Error"]
 p_value <- 2 * (1 - pnorm(abs(coef / se)))
@@ -107,16 +110,6 @@ writeData(wb, "Adjusted_ORs", adjusted_results)
 # Save to Excel file
 saveWorkbook(wb, "Table2_Crude_Adjusted.xlsx", overwrite = TRUE)
 
-
-# # Create survey design object
-# nhanes_design <- svydesign(
-#   id = ~SDMVPSU,
-#   strata = ~SDMVSTRA,
-#   weights = ~WTDRD1,
-#   nest = TRUE,
-#   data = nhanes_sub
-# )
-
 # -----------------------------
 # Table 3: Interaction terms
 # -----------------------------
@@ -138,7 +131,6 @@ fit_gender_interaction <- svyolr(
 )
 
 summary(fit_gender_interaction)
-
 
 #Test for interaction with income
 fit_income_interaction <- svyolr(
