@@ -70,6 +70,21 @@ n_income <- n_income %>%
     )
   )
 
+# Alcohol use
+n_alq <- read_xpt("ALQ_L.xpt",col_select = c("SEQN", "ALQ121"))
+
+n_alq <- n_alq %>%
+  mutate(
+    alc_current = case_when(
+      ALQ121 %in% c(0,9,10) ~ 0,               # Never or 1-6 times in past 12 months)
+      ALQ121 %in% 1:8 ~ 1,                   # Current drinker
+      ALQ121 %in% c(77, 99) ~ NA_real_,       # Refused/Don't know
+      TRUE ~ NA_real_                         # Missing
+    )
+  )
+
+
+
 #EXPOSURE VARIABLES
 n_fiber_day1 <- read_xpt("DR1TOT_L.xpt", col_select = c("SEQN", "DR1TFIBE","WTDRD1"))
 n_fiber_day2 <- read_xpt("DR2TOT_L.xpt", col_select = c("SEQN", "DR2TFIBE","WTDR2D"))
@@ -96,6 +111,18 @@ n_fiber <- n_fiber %>%
     )
   )
 
+#MODERATORS
+n_crp <- read_xpt("HSCRP_L.xpt", col_select = c("SEQN", "LBXHSCRP"))
+n_crp <- n_crp %>%
+  mutate(
+    hscrp_category = case_when(
+      LBXHSCRP < 1.0 ~ "Low Risk",
+      LBXHSCRP >= 1.0 & LBXHSCRP <= 3.0 ~ "Average Risk",
+      LBXHSCRP > 3.0 ~ "High Risk",
+      TRUE ~ NA_character_ # Handles missing or other values
+    )
+  )
+
 # Body measures
 n_bmi <- read_xpt("BMX_L.xpt",col_select = c("SEQN", "BMXBMI"))
 #recode
@@ -110,7 +137,7 @@ n_bmi <- n_bmi %>%
     )
   )
 
-#binary overweight or not
+#binary
 n_bmi <- n_bmi %>%
   mutate(
     bmi_overweight = case_when(
@@ -155,20 +182,21 @@ n_paq <- n_paq %>%
     )
   )
 
-nhanes_sub <- nhanes_sub %>%
-  left_join(n_paq %>% select(SEQN, vigorous_excercise), by = "SEQN")
 
 
-# GENDER
-nhanes_data <- nhanes_data %>%
-  mutate(
-    gender = case_when(
-      RIAGENDR == 1 ~ "Male",
-      RIAGENDR == 2 ~ "Female",
-      TRUE ~ NA_character_
-    ),
-    gender = factor(gender, levels = c("Male", "Female"))
-  )
+
+
+# Smoking
+n_smoking <- read_xpt("SMQ_L.xpt", col_select = c("SEQN", "SMQ040"))
+#recode it
+n_smoking <- n_smoking %>%
+  mutate(current_smoker = case_when(
+    SMQ040 %in% c(1, 2) ~ 1, # "Every day" and "Some days" become 1
+    SMQ040 == 3 ~ 0,       # "Not at all" becomes 0
+    TRUE ~ NA_real_        # Refused (7), Don't know (9), and missing (.) become NA
+  ))
+
+
 
 #SLEEP DISORDER (based on hours slept)
 n_sleep <- read_xpt("SLQ_L.xpt", col_select = c("SEQN", "SLD012"))
@@ -213,6 +241,31 @@ n_demo <- n_demo %>%
     )
   )
 
+#Educational level
+n_demo <- n_demo %>%
+  mutate(
+    education_level = case_when(
+      DMDEDUC2 == 1 ~ "Less than 9th grade",
+      DMDEDUC2 == 2 ~ "9–11th grade (no diploma)",
+      DMDEDUC2 == 3 ~ "High school graduate / GED",
+      DMDEDUC2 == 4 ~ "Some college / AA degree",
+      DMDEDUC2 == 5 ~ "College graduate or above",
+      TRUE ~ NA_character_
+    ),
+    education_level = factor(
+      education_level,
+      levels = c(
+        "Less than 9th grade",
+        "9–11th grade (no diploma)",
+        "High school graduate / GED",
+        "Some college / AA degree",
+        "College graduate or above"
+      )
+    )
+  )
+
+
+
 #OUTCOME VARIABLE
 n_phq <- read_xpt("DPQ_L.xpt", col_select = c("SEQN", "DPQ010", "DPQ020", "DPQ030", "DPQ040", "DPQ050", "DPQ060", "DPQ070", "DPQ080", "DPQ090"))
 #sum it
@@ -231,9 +284,9 @@ n_phq <- n_phq %>%
   )
 
 
-#MERGE ALL THE DATA 
+#MERGE ALL THE DATA
 
-# Start with n_demo
+# Start with n_demo and left join all others.
 nhanes_data <- n_demo %>%
   left_join(n_phq, by = "SEQN") %>%
   left_join(n_fiber, by = "SEQN") %>%
@@ -244,12 +297,27 @@ nhanes_data <- n_demo %>%
   left_join(n_sleep, by = "SEQN") %>%
   left_join(n_alq, by = "SEQN") %>%
   left_join(n_bmi, by = "SEQN") %>%
-  left_join(n_medicine, by = "SEQN") %>% 
+  left_join(n_medicine, by = "SEQN")
   # Filter for relevant population (e.g., adults aged 18+)
-  filter(RIDAGEYR >= 20)
+  
+  
+nhanes_sub <- nhanes_data %>% filter (RIDAGEYR >= 20)
 
 
 #OUTCOME VARIABLE CATEGORICAL
+
+#create a depression categorical variable
+# nhanes_sub <- nhanes_sub %>%
+#   mutate(
+#     depression_cat = case_when(
+#       phq9_total_score <= 4 ~ "None/minimal",
+#       phq9_total_score <= 9 ~ "Mild",
+#       phq9_total_score <= 14 ~ "Moderate",
+#       phq9_total_score <= 19 ~ "Moderately severe",
+#       TRUE ~ "Severe"
+#     ),
+#     depression_binary = if_else(phq9_total_score >= 10, 1, 0)  # optional binary
+#   )
 
 #Depression as ordinal
 nhanes_sub <- nhanes_sub %>%
@@ -268,3 +336,20 @@ nhanes_sub <- nhanes_sub %>%
     )
   )
 
+nhanes_sub <- nhanes_sub %>%
+  left_join(n_paq %>% select(SEQN, vigorous_excercise), by = "SEQN")
+
+
+
+# GENDER
+nhanes_sub <- nhanes_data %>%
+  mutate(
+    gender = case_when(
+      RIAGENDR == 1 ~ "Male",
+      RIAGENDR == 2 ~ "Female",
+      TRUE ~ NA_character_
+    ),
+    gender = factor(gender, levels = c("Male", "Female"))
+  )
+
+# 
