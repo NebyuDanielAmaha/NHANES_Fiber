@@ -1,10 +1,14 @@
 
 #Table 1
+
+# Remove rows with missing dietary weights
+nhanes_sub <- nhanes_sub[!is.na(nhanes_sub$WTDRD1), ]
+
 # Define survey design
 nhanes_design <- svydesign(
   id = ~SDMVPSU,
   strata = ~SDMVSTRA,
-  weights = ~WTDRD1,
+  weights = ~ WTDRD1,
   nest = TRUE,
   data = nhanes_sub
 )
@@ -13,10 +17,12 @@ nhanes_design <- svydesign(
 vars <- c("age_category", "gender","marital_status", "income_category",
           "bmi_category","vigorous_excercise" ,"sleep_disorder",
           "prescribed_meds", "depression_cat")
+nhanes_sub <- nhanes_sub %>%
+  left_join(n_paq %>% select(SEQN, vigorous_excercise), by = "SEQN")
 
 table1_unweighted <- CreateTableOne(vars = vars, data = nhanes_sub)
 table1_df <- as.data.frame(print(table1_unweighted, showAllLevels = TRUE))
-write.xlsx(table1_df, file = "Table1_Descriptives.xlsx", overwrite = TRUE)
+# write.xlsx(table1_df, file = "Table1_Descriptives.xlsx", overwrite = TRUE)
 
 # -----------------------------
 # Table 2: Crude Odds Ratios
@@ -26,8 +32,6 @@ predictors <- c("fiber_grams", "gender", "age_category",
                 "vigorous_excercise", "bmi_overweight", "income_category")
 
 crude_list <- list()
-
-#USING FOR LOOP TO GO THROUGH THE PREDICTORS
 
 for (var in predictors) {
   
@@ -40,7 +44,7 @@ for (var in predictors) {
   z <- coef_pred / se
   pval <- 2 * (1 - pnorm(abs(z)))
   
-  keep <- !grepl("\\|", names(coef_pred)) #to keep only the coefficients
+  keep <- !grepl("\\|", names(coef_pred))
   
   df <- data.frame(
     Variable = names(coef_pred)[keep],
@@ -50,7 +54,7 @@ for (var in predictors) {
     p_value = pval[keep]
   )
   
-  crude_list[[var]] <- df #keeping it in the crude_list
+  crude_list[[var]] <- df
 }
 
 crude_results <- bind_rows(crude_list) %>%
@@ -59,7 +63,6 @@ crude_results <- bind_rows(crude_list) %>%
 # -----------------------------
 # Table 2: Adjusted Odds Ratios
 # -----------------------------
-#MAKING SURE DEPRESSION CAT IS ORDERED AND A FACTOR
 nhanes_sub <- nhanes_sub %>%
   mutate(
     depression_cat = factor(
@@ -82,7 +85,7 @@ fit_svy_ordinal <- svyolr(
     sleep_disorder + vigorous_excercise + bmi_overweight + income_category,
   design = nhanes_design
 )
-#Calculating p-value because svyolr doesn't give p-values
+
 coef <- coef(fit_svy_ordinal)
 se <- summary(fit_svy_ordinal)$coefficients[, "Std. Error"]
 p_value <- 2 * (1 - pnorm(abs(coef / se)))
@@ -101,14 +104,24 @@ adjusted_results <- data.frame(
 # -----------------------------
 
 # Add both tables as separate sheets
-addWorksheet(wb, "Crude_ORs")
-writeData(wb, "Crude_ORs", crude_results)
+# addWorksheet(wb, "Crude_ORs")
+# writeData(wb, "Crude_ORs", crude_results)
+# 
+# addWorksheet(wb, "Adjusted_ORs")
+# writeData(wb, "Adjusted_ORs", adjusted_results)
+# 
+# # Save to Excel file
+# saveWorkbook(wb, "Table2_Crude_Adjusted.xlsx", overwrite = TRUE)
 
-addWorksheet(wb, "Adjusted_ORs")
-writeData(wb, "Adjusted_ORs", adjusted_results)
 
-# Save to Excel file
-saveWorkbook(wb, "Table2_Crude_Adjusted.xlsx", overwrite = TRUE)
+# # Create survey design object
+# nhanes_design <- svydesign(
+#   id = ~SDMVPSU,
+#   strata = ~SDMVSTRA,
+#   weights = ~WTDRD1,
+#   nest = TRUE,
+#   data = nhanes_sub
+# )
 
 # -----------------------------
 # Table 3: Interaction terms
@@ -131,6 +144,7 @@ fit_gender_interaction <- svyolr(
 )
 
 summary(fit_gender_interaction)
+
 
 #Test for interaction with income
 fit_income_interaction <- svyolr(
@@ -211,7 +225,7 @@ table3_results <- bind_rows(gender_int, income_int, sleep_int, sport_int)
 print(table3_results, digits = 3)
 
 # Export to Excel
-write.xlsx(table3_results, file = "Table3_Interaction_ORs.xlsx", overwrite = TRUE)
+# write.xlsx(table3_results, file = "Table3_Interaction_ORs.xlsx", overwrite = TRUE)
 
 # -----------------------------
 # Table 4: Subgroup Analysis
@@ -260,5 +274,55 @@ results_male
 results_female <- get_OR_p(fit_svy_female)
 results_female
 
-write.xlsx(results_male, file = "Table4_male.xlsx", overwrite = TRUE)
-write.xlsx(results_female, file = "Table4_female.xlsx", overwrite = TRUE)
+# write.xlsx(results_male, file = "Table4_male.xlsx", overwrite = TRUE)
+# write.xlsx(results_female, file = "Table4_female.xlsx", overwrite = TRUE)
+
+
+
+#Table 5 Sensitivity Analysis
+
+
+
+# # Binary outcome: Depression (≥10)
+nhanes_sub <- nhanes_sub[!is.na(nhanes_sub$WTDRD1), ]
+
+nhanes_design <- svydesign(
+  id = ~SDMVPSU,
+  strata = ~SDMVSTRA,
+  weights = ~WTDRD1,
+  nest = TRUE,
+  data = nhanes_sub
+)
+
+# Fit modified Poisson model
+poisson_model <- svyglm(
+  depressed_binary ~ fiber_grams + age_category + gender + marital_status + 
+    prescribed_meds + sleep_disorder + vigorous_excercise + 
+    bmi_overweight + income_category,
+  design = nhanes_design,
+  family = quasipoisson(link = "log")
+)
+
+# Extract coefficients, CIs, p-values
+summary(poisson_model)
+
+# Get PRs and 95% CIs
+coef_est <- coef(poisson_model)
+se <- sqrt(diag(vcov(poisson_model)))
+z <- coef_est / se
+p_val <- 2 * (1 - pnorm(abs(z)))
+ci_lower <- exp(coef_est - 1.96 * se)
+ci_upper <- exp(coef_est + 1.96 * se)
+
+results_poisson <- data.frame(
+  Variable = names(coef_est),
+  PR = exp(coef_est),
+  Lower95CI = ci_lower,
+  Upper95CI = ci_upper,
+  p_value = p_val
+)
+
+# View fiber effect
+subset(results_poisson)
+write.xlsx(results_poisson, file = "Table5_sensitivity.xlsx", overwrite = TRUE)
+
