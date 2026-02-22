@@ -18,5 +18,9 @@ This repository contains analysis of the National Health and Nutrition Examinati
 - **Table 4:** Stratified analysis by gender and period
 - **Table 5:** Sensitivity analysis by dietary fiber intake quartiles
 
+## Figures
+- **Figure 2:** LOWESS-smoothed relationship between energy-adjusted dietary fibre intake and PHQ-9 total score among U.S. adults before and during the COVID-19 pandemic.
+- **Figure 3:** Predicted marginal effects of energy-adjusted dietary fibre intake on the prevalence of depressive symptoms by gender and pandemic periods (NHANES 2017–2023).
+
 ## Contact
 For questions or collaborations, please contact **nebyu.amaha@gmail.com**.
