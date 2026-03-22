@@ -165,3 +165,18 @@ mi estimate, eform
 
 mi estimate: svy, subpop(if postpandemic==1): glm depression_binary ib4.fiber_q ib1.gender ib3.race ib5.education_level i.age_category i.marital_status ib3.income_category i.bmi_overweight i.sleep_duration i.prescribed_meds i.vigorous_exe i.alc_current i.current_smoker i.hscrp_category, family(poisson) link(log) eform
 mi estimate, eform
+
+* Smoking and without-smoking analysis
+mi estimate: svy, subpop(if postpandemic == 0): glm depression_binary c.fiber_resid5 ib1.gender ib3.race ib5.education_level i.age_category i.marital_status ib3.income_category i.bmi_overweight i.sleep_duration i.prescribed_meds i.vigorous_exe i.alc_current i.hscrp_category, family(poisson) link(log) eform
+mi estimate, eform
+
+mi estimate: svy, subpop(if postpandemic == 1): glm depression_binary c.fiber_resid5 ib1.gender ib3.race ib5.education_level i.age_category i.marital_status ib3.income_category i.bmi_overweight i.sleep_duration i.prescribed_meds i.vigorous_exe i.alc_current i.hscrp_category, family(poisson) link(log) eform
+mi estimate, eform
+
+* Energy-unadjusted fibre intake
+mi estimate: svy, subpop(if postpandemic == 0): glm depression_binary c.fiber_day1 ib1.gender ib3.race ib5.education_level i.age_category i.marital_status ib3.income_category i.bmi_overweight i.sleep_duration i.prescribed_meds i.vigorous_exe i.alc_current i.current_smoker i.hscrp_category, family(poisson) link(log) eform
+mi estimate, eform
+
+mi estimate: svy, subpop(if postpandemic == 1): glm depression_binary c.fiber_day1 ib1.gender ib3.race ib5.education_level i.age_category i.marital_status ib3.income_category i.bmi_overweight i.sleep_duration i.prescribed_meds i.vigorous_exe i.alc_current i.current_smoker i.hscrp_category, family(poisson) link(log) eform
+mi estimate, eform
+
